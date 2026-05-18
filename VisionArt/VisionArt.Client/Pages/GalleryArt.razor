@@ -1,0 +1,77 @@
+﻿@page "/gallery"
+@using VisionArt.Client.DTOs
+@inject VisionArt.Client.Services.ArtApiService ArtService
+<PageTitle>Art Gallery</PageTitle>
+
+<div class="gallery-page">
+
+    <section class="gallery-header">
+
+        <h1>Art Gallery</h1>
+
+        <p>
+            Explore the Metropolitan Museum artwork collection integrated
+            into the AI similarity search platform.
+        </p>
+
+    </section>
+
+    @if (artworks == null)
+    {
+        <div class="loading-container">
+            <p>Loading artworks...</p>
+        </div>
+    }
+    else if (!artworks.Any())
+    {
+        <div class="empty-state">
+            <h3>No artworks found.</h3>
+        </div>
+    }
+    else
+    {
+        <section class="gallery-grid">
+
+            @foreach (var art in artworks)
+            {
+                <div class="art-card">
+
+                    <div class="image-container">
+                        <img src="@GetUrl(art.Id)"
+                             alt="@art.Title" />
+                    </div>
+
+                    <div class="art-content">
+
+                        <h3>@art.Title</h3>
+
+                        <p class="artist-name">
+                            @art.Artist
+                        </p>
+
+                        <div class="art-meta">
+                            <span>@art.Category</span>
+                        </div>
+
+                    </div>
+
+                </div>
+            }
+
+        </section>
+    }
+
+</div>
+
+@code {
+    private List<ArtWorkDto>? artworks;
+
+    protected override async Task OnInitializedAsync()
+    {
+        artworks = await ArtService.GetAllAsync();
+    }
+    private string GetUrl(int id)
+    {
+        return ArtService.GetImageUrl(id);
+    }
+}
