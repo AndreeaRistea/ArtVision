@@ -55,3 +55,16 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# JetBrains Rider
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+AI-Service/data
+AI-Service/embeddings
+**/.vs/**

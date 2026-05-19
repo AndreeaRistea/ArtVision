@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+torch
+torchvision
+transformers
+Pillow>=12
+numpy
+python-multipart

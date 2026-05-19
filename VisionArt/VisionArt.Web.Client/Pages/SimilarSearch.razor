@@ -1,0 +1,176 @@
+@page "/similar-search"
+@attribute [Authorize]
+@using VisionArt.Shared.DTOs
+@inject VisionArt.Web.Client.Services.ArtApiService ArtService
+@inject NavigationManager Navigation
+<PageTitle>Similarity Search</PageTitle>
+
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>AI Similarity Search</h1>
+            <p class="text-secondary">Upload an artwork image and find visually similar pieces from the collection.</p>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col">
+            @if (previewUrl != null)
+            {
+                <div class="d-inline-block position-relative">
+                    <img src="@previewUrl" alt="Uploaded image preview" class="img-fluid rounded shadow" style="max-height: 400px;" />
+                    @if (isSearching)
+                    {
+                        <span class="badge bg-primary position-absolute top-0 start-0 m-2">
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            Searching...
+                        </span>
+                    }
+                    <button class="btn btn-sm btn-dark position-absolute top-0 end-0 m-2" @onclick="ClearUpload">Remove</button>
+                </div>
+            }
+            else if (isSearching)
+            {
+                <div class="drag-drop-zone d-flex align-items-center justify-content-center">
+                    <div class="text-center text-secondary">
+                        <div class="spinner-border text-primary mb-3" role="status" style="width: 2rem; height: 2rem;"></div>
+                        <p>Processing image...</p>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <InputFile OnChange="OnFileSelected" accept=".jpg,.jpeg,.png,.webp" class="drag-drop-zone">
+                    <div class="drag-drop-content">
+                        <div class="display-4 text-primary mb-3 fw-light">+</div>
+                        <p class="mb-3 fs-5">Drag & drop an image here</p>
+                        <p class="text-secondary mb-3">or</p>
+                        <span class="btn btn-outline-primary">Browse files</span>
+                    </div>
+                </InputFile>
+            }
+        </div>
+    </div>
+
+    @if (isSearching)
+    {
+        <div class="row g-4">
+            @for (int i = 0; i < 4; i++)
+            {
+                <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                    <div class="card h-100 shadow-sm border-0 rounded-3 overflow-hidden">
+                        <div style="height: 320px; background: #e5e7eb; overflow: hidden;">
+                            <div style="height: 100%; background: linear-gradient(90deg, #e5e7eb 0px, #f3f4f6 200px, #e5e7eb 400px); background-size: 800px 100%; animation: shimmer 1.8s ease-in-out infinite;"></div>
+                        </div>
+                        <div class="card-body">
+                            <div style="height: 14px; width: 75%; border-radius: 8px; background: linear-gradient(90deg, #e5e7eb 0px, #f3f4f6 200px, #e5e7eb 400px); background-size: 800px 100%; animation: shimmer 1.8s ease-in-out infinite;"></div>
+                            <div style="height: 14px; width: 50%; border-radius: 8px; margin-top: 12px; background: linear-gradient(90deg, #e5e7eb 0px, #f3f4f6 200px, #e5e7eb 400px); background-size: 800px 100%; animation: shimmer 1.8s ease-in-out infinite;"></div>
+                            <div style="height: 14px; width: 25%; border-radius: 8px; margin-top: 16px; background: linear-gradient(90deg, #e5e7eb 0px, #f3f4f6 200px, #e5e7eb 400px); background-size: 800px 100%; animation: shimmer 1.8s ease-in-out infinite;"></div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @if (results != null)
+    {
+        <div class="row mb-3">
+            <div class="col">
+                <h2>Similar Artworks (@results.Count results)</h2>
+            </div>
+        </div>
+
+        @if (!results.Any())
+        {
+            <div class="row">
+                <div class="col text-center py-5 text-secondary">
+                    <h3>No similar artworks found.</h3>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="row g-4">
+                @foreach (var art in results)
+                {
+                    <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                        <div class="card h-100 shadow-sm border-0 rounded-3 overflow-hidden">
+                            <div class="position-relative" style="height: 320px; background: #e5e7eb;">
+                                <img src="@GetResultImageUrl(art)" alt="@art.Title" class="w-100 h-100" style="object-fit: cover; display: block;" />
+                                <span class="position-absolute top-0 end-0 m-2 badge text-bg-dark bg-opacity-75 fs-6 fw-semibold">@($"{art.SimilarityScore:P1}")</span>
+                            </div>
+                            <div class="card-body">
+                                <h5 class="card-title">@art.Title</h5>
+                                <p class="card-text text-secondary">@art.Artist</p>
+                                <span class="badge bg-light text-dark">@art.Category</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+
+    @if (errorMessage != null)
+    {
+        <div class="row">
+            <div class="col">
+                <div class="alert alert-danger mt-4">@errorMessage</div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private string? previewUrl;
+    private IBrowserFile? selectedFile;
+    private bool isSearching;
+    private List<SimilarArtResultDto>? results;
+    private string? errorMessage;
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        isSearching = true;
+        errorMessage = null;
+        results = null;
+
+        selectedFile = e.File;
+        if (selectedFile == null) { isSearching = false; return; }
+
+        using var ms = new MemoryStream();
+        await selectedFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(ms);
+        ms.Position = 0;
+        previewUrl = $"data:{selectedFile.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}";
+
+        try
+        {
+            ms.Position = 0;
+            results = await ArtService.UploadAndSearchAsync(ms, selectedFile.Name, selectedFile.ContentType);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Search failed: {ex.Message}";
+        }
+        finally
+        {
+            isSearching = false;
+        }
+    }
+
+    private string GetResultImageUrl(SimilarArtResultDto art)
+    {
+        if (art.Id > 0)
+            return ArtService.GetImageUrl(art.Id);
+        return ArtService.GetImageByPathUrl(art.ImagePath);
+    }
+
+    private void ClearUpload()
+    {
+        previewUrl = null;
+        selectedFile = null;
+        results = null;
+        errorMessage = null;
+    }
+
+}

@@ -1,0 +1,28 @@
+.drag-drop-zone {
+    cursor: pointer;
+    display: block;
+    width: 100%;
+    min-height: 300px;
+    border: 2px dashed #d1d5db;
+    border-radius: 16px;
+    background: white;
+    transition: border-color 0.2s, background 0.2s;
+    text-align: center;
+}
+
+.drag-drop-zone:hover {
+    border-color: #6366f1;
+    background: #f5f3ff;
+}
+
+.drag-drop-content {
+    pointer-events: none;
+    padding: 2rem;
+}
+
+@keyframes shimmer {
+    0% { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+}
+
+

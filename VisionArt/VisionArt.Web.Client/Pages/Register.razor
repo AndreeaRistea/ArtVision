@@ -1,0 +1,113 @@
+@page "/register"
+@using VisionArt.Shared.DTOs
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Register</PageTitle>
+
+<div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="card shadow" style="width: 100%; max-width: 420px;">
+        <div class="card-body p-4">
+            <h3 class="card-title text-center mb-1">Create Account</h3>
+            <p class="text-muted text-center mb-4">Join VisionArt to explore the gallery</p>
+
+            @if (!string.IsNullOrEmpty(ErrorMessage))
+            {
+                <div class="alert alert-danger">@ErrorMessage</div>
+            }
+
+            @if (!string.IsNullOrEmpty(SuccessMessage))
+            {
+                <div class="alert alert-success">@SuccessMessage</div>
+            }
+
+            <EditForm Model="@Model" OnValidSubmit="@HandleRegister">
+                <DataAnnotationsValidator />
+
+                <div class="mb-3">
+                    <label for="fullName" class="form-label">Full Name</label>
+                    <InputText id="fullName" class="form-control" @bind-Value="Model.FullName"
+                               placeholder="Your full name" />
+                    <ValidationMessage For="() => Model.FullName" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <InputText id="email" class="form-control" @bind-Value="Model.Email"
+                               placeholder="your@email.com" />
+                    <ValidationMessage For="() => Model.Email" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input id="password" type="password" class="form-control"
+                           @bind="Model.Password" placeholder="At least 6 characters" />
+                    <ValidationMessage For="() => Model.Password" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="confirmPassword" class="form-label">Confirm Password</label>
+                    <input id="confirmPassword" type="password" class="form-control"
+                           @bind="Model.ConfirmPassword" placeholder="Repeat your password" />
+                    <ValidationMessage For="() => Model.ConfirmPassword" />
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100" disabled="@IsLoading">
+                    @(IsLoading ? "Creating account..." : "Create Account")
+                </button>
+            </EditForm>
+
+            <p class="text-center mt-3 mb-0">
+                Already have an account? <NavLink href="/login">Sign in</NavLink>
+            </p>
+        </div>
+    </div>
+</div>
+
+@code {
+    private RegisterRequestDto Model { get; set; } = new();
+    private string? ErrorMessage { get; set; }
+    private string? SuccessMessage { get; set; }
+    private bool IsLoading { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+        {
+            Navigation.NavigateTo("/");
+        }
+    }
+
+    private async Task HandleRegister()
+    {
+        IsLoading = true;
+        ErrorMessage = null;
+        SuccessMessage = null;
+
+        try
+        {
+            var error = await AuthService.Register(Model);
+
+            if (error == null)
+            {
+                SuccessMessage = "Account created successfully! Redirecting to login...";
+                await Task.Delay(1500);
+                Navigation.NavigateTo("/login");
+            }
+            else
+            {
+                ErrorMessage = error;
+            }
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "An error occurred. Please try again later.";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+}

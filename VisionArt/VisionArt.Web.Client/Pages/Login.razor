@@ -1,0 +1,104 @@
+@page "/login"
+@using VisionArt.Shared.DTOs
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Login</PageTitle>
+
+<div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="card shadow" style="width: 100%; max-width: 420px;">
+        <div class="card-body p-4">
+            <h3 class="card-title text-center mb-1">Welcome Back</h3>
+            <p class="text-muted text-center mb-4">Sign in to your account</p>
+
+            @if (!string.IsNullOrEmpty(ErrorMessage))
+            {
+                <div class="alert alert-danger">@ErrorMessage</div>
+            }
+
+            <EditForm Model="@Model" OnValidSubmit="@HandleLogin">
+                <DataAnnotationsValidator />
+
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <InputText id="email" class="form-control" @bind-Value="Model.Email"
+                               placeholder="your@email.com" />
+                    <ValidationMessage For="() => Model.Email" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input id="password" type="password" class="form-control"
+                           @bind="Model.Password" placeholder="Enter your password" />
+                    <ValidationMessage For="() => Model.Password" />
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100" disabled="@IsLoading">
+                    @(IsLoading ? "Signing in..." : "Sign In")
+                </button>
+            </EditForm>
+
+            <p class="text-center mt-3 mb-0">
+                Don't have an account? <NavLink href="/register">Create one</NavLink>
+            </p>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginRequestDto Model { get; set; } = new();
+    private string? ErrorMessage { get; set; }
+    private bool IsLoading { get; set; }
+    private string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+        {
+            var uri = new Uri(Navigation.Uri);
+            var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+            var returnUrl = query["returnUrl"];
+            Navigation.NavigateTo(returnUrl ?? "/");
+            return;
+        }
+
+        var currentUri = new Uri(Navigation.Uri);
+        if (currentUri.Query.Contains("expired=true"))
+        {
+            ErrorMessage = "Your session has expired. Please sign in again.";
+        }
+
+        var currentQuery = System.Web.HttpUtility.ParseQueryString(Navigation.Uri);
+        ReturnUrl = currentQuery["returnUrl"];
+    }
+
+    private async Task HandleLogin()
+    {
+        IsLoading = true;
+        ErrorMessage = null;
+
+        try
+        {
+            var success = await AuthService.Login(Model);
+
+            if (success)
+            {
+                Navigation.NavigateTo(ReturnUrl ?? "/");
+            }
+            else
+            {
+                ErrorMessage = "Invalid email or password. Please try again.";
+            }
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "An error occurred. Please try again later.";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+}

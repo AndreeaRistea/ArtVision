@@ -1,0 +1,117 @@
+@page "/gallery"
+@attribute [Authorize]
+@using VisionArt.Web.Client.DTOs
+@inject VisionArt.Web.Client.Services.ArtApiService ArtService
+<PageTitle>Art Gallery</PageTitle>
+
+<div class="gallery-page">
+
+    <section class="gallery-header">
+
+        <h1>Art Gallery</h1>
+
+        <p>
+            Explore the Metropolitan Museum artwork collection integrated
+            into the AI similarity search platform.
+        </p>
+
+    </section>
+
+    @if (result == null)
+    {
+        <div class="loading-container">
+            <p>Loading artworks...</p>
+        </div>
+    }
+    else if (!result.Items.Any())
+    {
+        <div class="empty-state">
+            <h3>No artworks found.</h3>
+        </div>
+    }
+    else
+    {
+        <section class="gallery-grid">
+
+            @foreach (var art in result.Items)
+            {
+                <div class="art-card">
+
+                    <div class="image-container">
+                        <img src="@GetUrl(art.Id)"
+                             alt="@art.Title" loading="lazy" />
+                    </div>
+
+                    <div class="art-content">
+
+                        <h3>@art.Title</h3>
+
+                        <p class="artist-name">
+                            @art.Artist
+                        </p>
+
+                        <div class="art-meta">
+                            <span>@art.Category</span>
+                        </div>
+
+                    </div>
+
+                </div>
+            }
+
+        </section>
+
+        <nav class="pagination-nav">
+            <button class="btn btn-outline-primary" disabled="@(currentPage <= 1)" @onclick="PreviousPage">
+                Previous
+            </button>
+            <span class="pagination-info">
+                Page @result.Page of @result.TotalPages
+            </span>
+            <button class="btn btn-outline-primary" disabled="@(currentPage >= result.TotalPages)" @onclick="NextPage">
+                Next
+            </button>
+            <select class="form-select ms-3" style="width: auto;" @bind="pageSize" @bind:after="async () => await LoadPage(1)">
+                <option value="12">12 per page</option>
+                <option value="24">24 per page</option>
+                <option value="48">48 per page</option>
+                <option value="96">96 per page</option>
+            </select>
+        </nav>
+    }
+
+</div>
+
+@code {
+    private PaginatedArtworkResult? result;
+    private int currentPage = 1;
+    private int pageSize = 20;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPage(1);
+    }
+
+    private async Task LoadPage(int page)
+    {
+        currentPage = page;
+        result = await ArtService.GetPaginatedAsync(page, pageSize);
+    }
+
+    private async Task PreviousPage()
+    {
+        if (currentPage > 1)
+            await LoadPage(currentPage - 1);
+    }
+
+    private async Task NextPage()
+    {
+        if (result != null && currentPage < result.TotalPages)
+            await LoadPage(currentPage + 1);
+    }
+
+    private string GetUrl(int id)
+    {
+        return ArtService.GetImageUrl(id);
+    }
+}
